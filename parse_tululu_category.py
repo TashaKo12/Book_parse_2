@@ -5,10 +5,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlsplit, unquote
 
 
-
-
-
-def parse_book_page(category_url):
+def parse_book_category(category_url):
     response = requests.get(category_url)
     response.raise_for_status()
     page_code = BeautifulSoup(response.text, "lxml")
@@ -17,14 +14,14 @@ def parse_book_page(category_url):
 
     books = page_code.select("table.d_book")
     for book in books:
-        books_urls.append(urljoin(category_url, book.find("a")["href"]))
-    print(books_urls)
-   
+        book_id = book.find("a")["href"]
+        books_urls.append(urljoin(category_url, book_id))
 
+   
 
 def main():
     category_url = "https://tululu.org/l55/"
-    parse_book_page(category_url)
+    parse_book_category(category_url)
 
 
 if __name__ == "__main__":
