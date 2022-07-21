@@ -5,8 +5,10 @@ from time import sleep
 
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import unquote, urljoin, urlsplit
+from urllib.parse import unquote, urljoin, urlparse, urlsplit
 from pathvalidate import sanitize_filename
+
+from parse_tululu_category import parse_book_category
 
 
 def check_for_redirect(response):
@@ -43,9 +45,9 @@ def parse_book_page(response, template_url):
     return book_parameters
 
 
-def save_book(response, filename, book_number, folder='books/'):
+def save_book(response, filename, folder='books/'):
     pathlib.Path(folder).mkdir(parents=True, exist_ok=True)
-    file_path =  os.path.join(folder, f"{book_number}.{sanitize_filename(filename)}.txt")
+    file_path =  os.path.join(folder, f"{sanitize_filename(filename)}.txt")
 
     with open(file_path, 'w', encoding="utf-8") as file:
         file.write(response.text)
@@ -65,6 +67,7 @@ def download_image(image_url, folder="images/"):
 
 
 def main():
+    """
     parser = argparse.ArgumentParser(
         description= "Проект скачивает книги и соответствующие им картинки,\
                      а также выводит дополнительную информацию "
@@ -72,29 +75,31 @@ def main():
     parser.add_argument("--start_id", type=int,
                         help="Стартовая книга для скачивания", default=1)
     parser.add_argument("--end_id", type=int,
-                        help="Конечная книга для скачивания", default=10)
+                        help="Конечная книга для скачивания", default=100)
     args = parser.parse_args()
+"""
 
-
-    book_url = "https://tululu.org/b{}/"
+    book_urls = parse_book_category()
     link_download_book = "https://tululu.org/txt.php"
 
 
-    for book_number in range(args.start_id, args.end_id):
+
+    for book_url in book_urls:
+        book_number = urlparse(book_url).path.replace("/", "").replace("b", "")
 
         params = {"id": book_number}
         book_response = requests.get(link_download_book, params)
-
+       
         try:
             book_response.raise_for_status()
             check_for_redirect(book_response)
-
-            response = requests.get(book_url.format(book_number))
+            
+            response = requests.get(book_url)
             response.raise_for_status()
             check_for_redirect(response)
 
             book_parameters = parse_book_page(response, book_url)
-            save_book(book_response, book_parameters["name"], book_number)
+            save_book(book_response, book_parameters["name"])
             download_image(book_parameters["image"])
 
         except requests.exceptions.HTTPError:
@@ -102,7 +107,7 @@ def main():
         except requests.exceptions.ConnectionError:
             print("Повторное подключение к серверу")
             sleep(20)
-
+        sleep(2)
 
 if __name__ == "__main__":
     main()
